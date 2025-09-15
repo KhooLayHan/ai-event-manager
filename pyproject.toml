@@ -1,0 +1,48 @@
+[project]
+name = "ai-event-manager"
+version = "0.1.0"
+description = "An AI-powered crowd control and event simulation for the Great Malaysia AI Hackathon 2025."
+authors = [
+    { name = "Khoo Lay Han", email = "tp079817@mail.apu.edu.my" },
+    { name = "Soo Zhan Thong", email = "soo.zhan.thong@student.mmu.edu.my" },
+    { name = "Chow Yong Xiang", email = "xiang05127@1utar.my" },
+    { name = "Tan Zheng Ye", email = "B2201278@helplive.edu.my" },
+    { name = "Chia Kai-Jun", email = "B2300232@helplive.edu.my" },
+]
+
+readme = "README.md"
+requires-python = ">=3.13"
+
+dependencies = [
+    "streamlit",
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "boto3",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C90", "B", "I"]
+ignore = ["E501"]
+
+# Exclude files and directories
+exclude = [
+  ".git",
+  "__pycache__",
+  "venv",
+  ".venv",
+  "dist",
+  "build",
+  "*.egg-info",
+  "migrations",
+  "fixtures",
+  "node_modules",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.13.0",
+]

@@ -21,6 +21,18 @@ dependencies = [
     "boto3",
 ]
 
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-mock",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.13.0",
+]
+
 [tool.ruff]
 line-length = 100
 
@@ -40,9 +52,4 @@ exclude = [
   "migrations",
   "fixtures",
   "node_modules",
-]
-
-[dependency-groups]
-dev = [
-    "ruff>=0.13.0",
 ]

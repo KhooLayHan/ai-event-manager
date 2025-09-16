@@ -31,7 +31,7 @@ This tool should be designed to assist event organizers, stadium managers, and c
 - Builds public trust in large-scale gatherings.
 - Scalable to government/public safety use (Merdeka celebrations, Thaipusam, Hari Raya bazaars).
 
-## FAQ (Contestants Clarification)
+### FAQ (Contestants Clarification)
 
 1. Do we need live CCTV or IoT sensors?
 → No. Focus on predictive modeling with existing/simulated datasets.

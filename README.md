@@ -33,23 +33,23 @@ This tool should be designed to assist event organizers, stadium managers, and c
 
 ## FAQ (Contestants Clarification)
 
-Do we need live CCTV or IoT sensors?
+1. Do we need live CCTV or IoT sensors?
 → No. Focus on predictive modeling with existing/simulated datasets.
-Can we use mock event data?
+2. Can we use mock event data?
 → Yes. Teams can create sample datasets for stadiums, concerts, etc.
-Do we need to show real-time updates?
+3. Do we need to show real-time updates?
 → Optional. A simulation dashboard is enough, but real-time extensions earn bonus points.
-What kind of scenarios should we cover?
+4. What kind of scenarios should we cover?
 → At least 3: entry rush, mid-event congestion, and evacuation.
-Can we integrate public transport data?
+5. Can we integrate public transport data?
 → Yes, if available. Otherwise, mock schedules are acceptable.
-How do we demonstrate effectiveness?
+6. How do we demonstrate effectiveness?
 → By showing “before vs after” crowd flow improvements in your simulation.
-Is mobile app development required?
+7. Is mobile app development required?
 → Not required. A web dashboard or chatbot for staff is sufficient.
-Can we use AI forecasting models?
+8. Can we use AI forecasting models?
 → Yes. Time-series forecasting, reinforcement learning, or simulation models are all valid.
-Should we design for organizers or attendees?
+9. Should we design for organizers or attendees?
 → Primarily organizers/event managers. Attendee-facing solutions are optional add-ons.
-How will this be judged if no real crowd is available?
+10. How will this be judged if no real crowd is available?
 → Based on simulation logic, creativity of scenarios, and clarity of recommendations.

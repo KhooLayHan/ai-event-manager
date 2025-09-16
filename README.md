@@ -15,7 +15,7 @@ This tool should be designed to assist event organizers, stadium managers, and c
 5. **Supports Multiple Use Cases**: Demonstrates at least 3 different crowd scenarios (e.g., concert entry, stadium exit, festival congestion).
 6. **User-Friendly**: Outputs should be in dashboards, simple alerts, or WhatsApp-style notifications for event staff.
 
-## Evaluation Criteria
+### Evaluation Criteria
 
 1. **Accuracy** – How well does the system simulate realistic crowd scenarios?
 2. **Scalability** – Can it be applied to small events (1,000 people) and large events (50,000+)?
@@ -24,7 +24,7 @@ This tool should be designed to assist event organizers, stadium managers, and c
 5. **Practicality** – Uses existing datasets (no special hardware required).
 6. **Innovation** – Smart scenario handling (e.g., linking public transport timing to exit strategy).
 
-## Real-World Impact
+### Real-World Impact
 
 - Safer, smoother events with reduced risk of accidents.
 - Cost savings for organizers (no need for expensive new hardware).

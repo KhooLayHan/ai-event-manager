@@ -21,7 +21,6 @@ dependencies = [
     "boto3",
 ]
 
-
 [project.optional-dependencies]
 dev = [
     "pytest",
@@ -51,5 +50,4 @@ exclude = [
   "*.egg-info",
   "migrations",
   "fixtures",
-  "node_modules",
 ]

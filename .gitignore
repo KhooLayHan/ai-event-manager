@@ -10,6 +10,9 @@ venv/
 # IDE
 .vscode/
 !.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.code-profile
 
 # OS
 .DS_Store

@@ -35,13 +35,25 @@ goal = "Maximum Safety" if scenario in ("Evacuation",) else "Balanced Safety & C
 final_only = st.checkbox("Show final result only", value=False)
 run_clicked = st.button("Run Simulation", icon="▶️")
 
+
 frame_placeholder = st.empty()
 metrics_placeholder = st.empty()
 
+# Add colours represtation
+st.markdown("""
+<div style='margin-top: 1em; margin-bottom: 1em;'>
+<b>Legend:</b><br>
+<span style='display:inline-block;width:18px;height:18px;background:#1f77b4;border-radius:50%;margin-right:6px;vertical-align:middle;'></span> Attendee<br>
+<span style='display:inline-block;width:18px;height:18px;background:#2ca02c;border-radius:50%;margin-right:6px;vertical-align:middle;'></span> Exit<br>
+<span style='display:inline-block;width:18px;height:18px;background:#d62728;border-radius:50%;margin-right:6px;vertical-align:middle;'></span> Entry<br>
+<span style='display:inline-block;width:18px;height:18px;background:#111111;border-radius:50%;margin-right:6px;vertical-align:middle;'></span> Wall/Obstacle<br>
+<span style='display:inline-block;width:18px;height:18px;background:#FFFFFF;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid #ccc;'></span> Empty/Walkable
+</div>
+""", unsafe_allow_html=True)
+
 if run_clicked:
 	params = SimulationParameters(attendees=attendees, open_gates=gate_count, optimization_goal=goal)
-	# Backend scales down attendees: n_attendees = max(1, attendees // 20)
-	total_attendees = max(1, attendees // 20)
+	total_attendees = attendees  # value from the frontend user choice
 
 	if final_only:
 		# Consume the generator and keep the last frame/metrics

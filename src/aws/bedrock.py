@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from typing import Dict, List, Optional, Union
 
 import boto3
@@ -8,137 +9,92 @@ from botocore.exceptions import ClientError, NoCredentialsError
 
 from src.shared_models import AIRecommendation, SimulationParameters
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging for the module
 logger = logging.getLogger(__name__)
 
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 
-# REAL BACKEND - Placeholder
+# Best Practice: Create clients once at the module level.
+# Boto3 will automatically use the region and credentials from the user's environment.
+# This removes the need for hardcoded regions.
+try:
+    bedrock_client = boto3.client(
+        service_name="bedrock", region_name=AWS_REGION, config=Config(retries={"max_attempts": 3})
+    )
+    bedrock_runtime_client = boto3.client(
+        service_name="bedrock-runtime",
+        region_name=AWS_REGION,
+        config=Config(retries={"max_attempts": 3}),
+    )
+except NoCredentialsError:
+    logger.error("AWS credentials not found. Please run 'aws configure'.")
+    bedrock_client = None
+    bedrock_runtime_client = None
+
+
+# REAL BACKEND - Placeholder (This part is correct)
 def get_ai_recommendations(params: SimulationParameters) -> List[AIRecommendation]:
-    """
-    Get AI recommendations based on the provided simulation parameters.
-
-    Args:
-        params (SimulationParameters): The parameters for the AI simulation.
-
-    Returns:
-        List[AIRecommendation]: The list of AI recommendation objects.
-    """
-
-    # The AI Lead will replace this with their REAL boto3 calls.
-    # For now, we return the mock data so the test UI runs.
     from src.stubs.mock_backend import get_ai_recommendations as mock_get
 
     return mock_get(params)
 
 
 def get_basic_response(prompt: str) -> Optional[str]:
-    """
-    Sends a simple prompt to Amazon Bedrock's Titan Text and returns the response.
+    """Sends a prompt to Amazon Titan Text and returns the response."""
+    if not bedrock_runtime_client:
+        return None
 
-    Args:
-        prompt (str): The input prompt for the model.
-
-    Returns:
-        Optional[str]: The response from the model or None if an error occurred.
-    """
     try:
-        # Initialize the Bedrock client
-        bedrock_runtime = boto3.client(
-            service="bedrock-runtime",
-            region_name="us-east-1",
-            config=Config(retries={"max_attempts": 3}),
-        )
-
-        # Create the request body for the Titan model
         request_body = {
             "inputText": prompt,
-            "textGenerationConfig": {
-                "maxTokenCount": 1024,
-                "temperature": 0.7,
-                "topP": 0.95,
-                "stopSequences": ["\n"],
-            },
+            "textGenerationConfig": {"maxTokenCount": 512, "temperature": 0.7, "topP": 0.9},
         }
 
-        # Calls the Titan Text model
-        logger.info(f"Sending prompt to Amazon Bedrock: {prompt}")
-        response = bedrock_runtime.invoke_model(
-            modelId="amazon.titan-text-lite-v1",
-            body=json.dumps(request_body),
+        logger.info("Sending prompt to Amazon Bedrock Titan model...")
+        response = bedrock_runtime_client.invoke_model(
+            modelId="amazon.titan-text-lite-v1", body=json.dumps(request_body)
         )
 
         response_body = json.loads(response["body"].read())
-        result_text = response_body.get("result", [{}])[0].get("outputText", "")
+        result_text = response_body["results"][0]["outputText"]
 
-        logger.info(f"Received response from Amazon Bedrock: {result_text[:50]}...")
+        logger.info("Received response from Amazon Bedrock.")
         return result_text
 
-    except NoCredentialsError:
-        logger.error("AWS credentials not found. Please configure your AWS credentials.")
-        return None
-
     except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code", "Unknown")
-        error_message = e.response.get("Error", {}).get("Message", "No message provided")
-        logger.error(f"AWS ClientError: {error_code} - {error_message}")
+        logger.error(f"AWS ClientError calling Bedrock: {e}")
         return None
-
     except Exception as e:
-        logger.error(f"Unexpected error getting basic response from Amazon Bedrock: {str(e)}")
+        logger.error(f"Unexpected error calling Bedrock: {e}")
         return None
 
 
 def verify_bedrock_access() -> Dict[str, Union[bool, str]]:
-    """
-    Verify access to Amazon Bedrock by invoking a simple model.
-
-    Returns:
-        Dict[str, Union[bool, str]]: A dictionary containing the access status and an optional error message.
-    """
-
-    try:
-        # Try a simple call to list modesl to verify access
-        bedrock_client = boto3.client(
-            service="bedrock",
-            region_name="us-east-1",
-            config=Config(retries={"max_attempts": 3}),
-        )
-
-        response = bedrock_client.list_foundation_models(byProvider="Amazon", MaxResults=1)
-
-        # If we get here, we have access
-        logger.info("✅ Successfully accessed Amazon Bedrock and listed models.")
-
-        model_count = len(response.get("modelSummaries", []))
-
-        return {
-            "success": True,
-            "message": f"Successfully connected to Amazon Bedrock. Found {model_count} models.",
-        }
-
-    except NoCredentialsError:
-        logger.error("AWS credentials not found. Please configure your AWS credentials.")
+    """Verifies access to Amazon Bedrock by listing available foundation models."""
+    if not bedrock_client:
         return {
             "success": False,
             "message": "AWS credentials not found. Please configure your AWS credentials.",
         }
 
+    try:
+        logger.info("Verifying access to Amazon Bedrock by listing foundation models...")
+        # A simple, low-cost API call to check permissions and connectivity.
+        response = bedrock_client.list_foundation_models(byProvider="Amazon")
+
+        model_count = len(response.get("modelSummaries", []))
+        message = f"Successfully connected to Amazon Bedrock. Found {model_count} Amazon foundation models."
+        logger.info(message)
+
+        return {"success": True, "message": message}
+
     except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code", "Unknown")
-        error_message = e.response.get("Error", {}).get("Message", str(e))
-
-        logger.error(f"AWS ClientError: {error_code} - {error_message}")
-        return {"success": False, "message": f"AWS ClientError: {error_code} - {error_message}"}
-
+        error_message = (
+            f"AWS ClientError: {e.response['Error']['Code']} - {e.response['Error']['Message']}"
+        )
+        logger.error(error_message)
+        return {"success": False, "message": error_message}
     except Exception as e:
-        logger.error(f"Error verifying Amazon Bedrock access: {str(e)}")
-        return {"success": False, "message": f"Failed to access Amazon Bedrock: {str(e)}"}
-
-    prompt = "Hello, Bedrock!"
-    response = get_basic_response(prompt)
-
-    if response:
-        return {"access": True}
-    else:
-        return {"access": False, "error": "Failed to access Amazon Bedrock"}
+        error_message = f"An unexpected error occurred: {e}"
+        logger.error(error_message)
+        return {"success": False, "message": error_message}

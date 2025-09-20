@@ -48,7 +48,7 @@ if run_clicked:
 		step = 0
 		last_grid = None
 		last_metrics = None
-		for grid, metrics in run_simulation_step_by_step(params):
+		for grid, metrics, _ in run_simulation_step_by_step(params):
 			step += 1
 			last_grid = grid
 			last_metrics = metrics
@@ -85,7 +85,7 @@ if run_clicked:
 	else:
 		# Stream frame-by-frame
 		step = 0
-		for grid, metrics in run_simulation_step_by_step(params):
+		for grid, metrics, _ in run_simulation_step_by_step(params):
 			step += 1
 			# Render grid as a discrete heatmap
 			fig, ax = plt.subplots(figsize=(6, 4))

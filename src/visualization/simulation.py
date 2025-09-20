@@ -19,13 +19,14 @@ Component Overview:
 Refer to PLAN_FRONTEND_COMPONENTS.md for further details and rationale.
 """
 import streamlit as st
+
 # If using streamlit-image-comparison, import it (uncomment if installed)
 from streamlit_image_comparison import image_comparison
 
 
 def show_simulation_dashboard(before_metrics, after_metrics, before_animation_frames, after_animation_frames, ai_recommendations, before_img_path=None, after_img_path=None):
 	# Inject custom CSS to set the image comparison slider color to black
-	st.markdown(
+		st.markdown(
 		"""
 		<style>
 		/* Aggressively target the slider and handle for streamlit-image-comparison */
@@ -92,11 +93,12 @@ def show_simulation_dashboard(before_metrics, after_metrics, before_animation_fr
 			st.markdown(f"**Reason:** {rec['reason']}")
 
 	# Stretch Goal: Comparison Slider (if images provided)
+	import io
 	import os
 	from urllib.parse import urlparse
+
 	import requests
 	from PIL import Image
-	import io
 	def load_image(path):
 		# Check if local file
 		if os.path.exists(path):
@@ -162,9 +164,3 @@ if __name__ == "__main__":
 		before_img_path,
 		after_img_path
 	)
-
-
-
-
-
-

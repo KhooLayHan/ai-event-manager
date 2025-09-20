@@ -13,6 +13,9 @@ if PROJECT_ROOT not in sys.path:
 from src.shared_models import SimulationParameters
 from src.simulation.core import run_simulation_step_by_step
 
+# Cap aligned with backend default (was 300 in UI)
+MAX_STEPS_UI = 200
+
 st.title("AI Event Manager: Demo")
 
 st.subheader("Simulation Parameters")
@@ -24,6 +27,7 @@ gate_count = st.number_input("Number of Open Gates", 1, 10, 2)
 
 st.subheader("Simulation")
 st.info("Press Run to stream the simulation.")
+st.caption(f"Stop conditions: all attendees finished OR {MAX_STEPS_UI} steps cap (aligned with backend).")
 
 # Map scenario to an optimization goal label (optional informational use)
 goal = "Maximum Safety" if scenario in ("Evacuation",) else "Balanced Safety & Cost"
@@ -114,9 +118,9 @@ if run_clicked:
 			if active_attendees == 0:
 				st.success("All attendees reached exits. Simulation complete.")
 				break
-			# Failsafe: stop after a generous number of frames
-			if step >= 300:
-				st.warning("Stopped after 300 steps (failsafe).")
+			# Cap aligned with backend default
+			if step >= MAX_STEPS_UI:
+				st.warning(f"Stopped after {MAX_STEPS_UI} steps (cap).")
 				break
 
 			# Small delay to visualize progression smoothly

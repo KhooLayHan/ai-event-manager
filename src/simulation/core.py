@@ -133,13 +133,23 @@ class Simulation:
         avg_steps = (
             sum(a.steps_taken for a in self.attendees) / total if total > 0 else 0.0
         )
+        # Efficiency: completed / total
+        efficiency = completed / total if total else 0.0
+        # Peak congestion: 1 - completion_rate
+        peak_congestion_percent = float(1.0 - efficiency)
+        # Average wait time (mins): estimate as (max_steps - time_step) / 2
+        avg_wait_time_mins = int(max(0, (self.config.max_steps - self.time_step) / 2))
+        # Active attendees: those not yet completed
+        active_attendees = in_system
         return {
             "time_step": self.time_step,
             "completed": completed,
             "total": total,
-            "in_system": in_system,
-            "completion_rate": completed / total if total else 0.0,
+            "active_attendees": active_attendees,
+            "efficiency": efficiency,
             "avg_steps": avg_steps,
+            "avg_wait_time_mins": avg_wait_time_mins,
+            "peak_congestion_percent": peak_congestion_percent,
         }
 
     def render_grid(self) -> np.ndarray:
@@ -176,11 +186,13 @@ def run_simulation_step_by_step(
         sim.step()
         grid = sim.render_grid()
         s = sim.stats()
+        # Pass all stats as a dict for now (or update SimulationMetrics to accept all fields)
         metrics = SimulationMetrics(
-            avg_wait_time_mins=int(max(0, (sim.config.max_steps - s["time_step"]) / 2)),
-            peak_congestion_percent=float(1.0 - s["completion_rate"]),
+            avg_wait_time_mins=s["avg_wait_time_mins"],
+            peak_congestion_percent=s["peak_congestion_percent"],
         )
-        yield grid, metrics
+        # Yield grid, metrics, and all stats for the frontend
+        yield grid, metrics, s
         if s["completed"] == s["total"]:
             break
 

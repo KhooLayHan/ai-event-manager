@@ -22,6 +22,18 @@ def verify_aws_credentials():
         print("✅ AWS Credentials are valid and working!")
         print(f"   Authenticated as IAM User: {user_name}")
         print(f"   Full ARN: {user_arn}")
+
+        # Now check Bedrock specifically
+        print("\nChecking AWS Bedrock access...")
+        bedrock_result = verify_aws_credentials()
+
+        if bedrock_result["success"]:
+            print(f"{bedrock_result['message']}")
+        else:
+            print(f"Failed to access AWS Bedrock: {bedrock_result['message']}")
+            print("Please ensure your IAM user has the necessary permissions for Bedrock.")
+            print("Check https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam.html")
+
         return True
 
     except NoCredentialsError:

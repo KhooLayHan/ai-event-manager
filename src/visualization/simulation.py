@@ -18,6 +18,7 @@ Component Overview:
 
 Refer to PLAN_FRONTEND_COMPONENTS.md for further details and rationale.
 """
+
 import streamlit as st
 
 # If using streamlit-image-comparison, import it (uncomment if installed)
@@ -52,11 +53,11 @@ def show_simulation_dashboard(before_metrics, after_metrics, before_animation_fr
 		unsafe_allow_html=True
 	)
 
-	st.title("📊 Simulation Dashboard")
-	st.markdown("**Goal:** A visually stunning and instantly understandable showcase of your project's impact.")
+    st.title("📊 Simulation Dashboard")
+    st.markdown("**Goal:** A visually stunning and instantly understandable showcase of your project's impact.")
 
 	# Main Layout: Side-by-side columns
-	col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
 	# Column Headers
 	col1.header("Before AI Optimization")

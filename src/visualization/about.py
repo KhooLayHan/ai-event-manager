@@ -1,34 +1,41 @@
 import streamlit as st
 
-st.title("Project Details")
+st.title("About CrowdFlow AI")
 
-st.subheader("System Architecture")
+# System Architecture
+with st.expander("System Architecture"):
+    st.image("./mock_image/system-architecture-diagram.png", caption="System Architecture Diagram")
+    st.markdown("This diagram shows the planned implementation and integration of all major components.")
 
-st.write("image here")
+# Technology Stack
+with st.expander("Technology Stack"):
+    st.markdown(
+        """
+        - **Frontend**: Streamlit
+        - **Simulation Engine**: NumPy
+        - **Visualization**: Matplotlib
+        - **AWS Integration**: Amazon Bedrock
+        """
+    )
 
-st.subheader("Tech Stack & Tools")
+# Novelty & Impact (X-Factors)
+with st.expander("Our Winning Strategy (The X-Factors)"):
+    st.markdown(
+        """
+        - **Explainable AI (XAI):** Recommendations are always accompanied by clear, data-driven reasons.
+        - **Cost-Aware AI:** The system can optimize for either maximum safety or a balanced safety/cost scenario, reflecting real-world business constraints.
+        - **Interactive 'What-If' Scenarios:** Users can tweak AI suggestions and instantly see the impact in the dashboard.
+        """
+    )
 
-st.markdown(
-    """
-    - **Frontend**: Streamlit
-    - **Simulation Engine**: NumPy
-    - **Visualization**: Matplotlib
-    - **AWS Integration**: Amazon Bedrock
-    """
-)
-
-st.subheader("Novelty & Impact")
-
-st.write("description here")
-
-st.subheader("The Team")
-
-st.markdown(
-    """
-    - Khoo Lay Han (tp079817@mail.apu.edu.my)
-    - Soo Zhan Thong (soo.zhan.thong@student.mmu.edu.my)
-    - Chow Yong Xiang (xiang05127@1utar.my)
-    - Tan Zheng Ye (B2201278@helplive.edu.my)
-    - Chia Kai-Jun (B2300232@helplive.edu.my)
-    """
-)
+# Team Credits
+with st.expander("Meet the Team"):
+    st.markdown(
+        """
+        - Khoo Lay Han (tp079817@mail.apu.edu.my)
+        - Soo Zhan Thong (soo.zhan.thong@student.mmu.edu.my)
+        - Chow Yong Xiang (xiang05127@1utar.my)
+        - Tan Zheng Ye (B2201278@helplive.edu.my)
+        - Chia Kai-Jun (B2300232@helplive.edu.my)
+        """
+    )

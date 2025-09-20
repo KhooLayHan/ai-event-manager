@@ -1,59 +1,42 @@
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
+from src.aws.bedrock import verify_bedrock_access  # Correctly import the function
 
-def verify_aws_credentials():
+
+def verify_aws_setup():
     """
-    Verifies that the AWS credentials are set up correctly by making a
-    simple, read-only API call to AWS.
+    Verifies the complete AWS setup: IAM credentials and Bedrock access.
     """
+    print("--- Verifying AWS Setup ---")
+
+    # Step 1: Verify basic IAM credentials
+    print("\n[1/2] Checking basic IAM credentials...")
     try:
-        # Create a client for the IAM service. This is a good choice for a
-        # simple check as it exists in all regions and requires authentication.
         iam_client = boto3.client("iam")
-
-        # Make a simple API call that gets information about the current user.
-        # This will fail if credentials are not configured correctly.
         response = iam_client.get_user()
-
-        user_arn = response["User"]["Arn"]
         user_name = response["User"]["UserName"]
+        print(f"✅ Basic IAM credentials are valid. Authenticated as: {user_name}")
+    except (NoCredentialsError, ClientError) as e:
+        print("❌ Basic IAM credential check FAILED.")
+        print(f"   Error: {e}")
+        print("   Please run 'aws configure' and ensure your keys are correct.")
+        return
 
-        print("✅ AWS Credentials are valid and working!")
-        print(f"   Authenticated as IAM User: {user_name}")
-        print(f"   Full ARN: {user_arn}")
+    # Step 2: Verify specific access to Bedrock
+    print("\n[2/2] Checking Amazon Bedrock service access...")
+    bedrock_result = verify_bedrock_access()  # Correct function call
 
-        # Now check Bedrock specifically
-        print("\nChecking AWS Bedrock access...")
-        bedrock_result = verify_aws_credentials()
-
-        if bedrock_result["success"]:
-            print(f"{bedrock_result['message']}")
-        else:
-            print(f"Failed to access AWS Bedrock: {bedrock_result['message']}")
-            print("Please ensure your IAM user has the necessary permissions for Bedrock.")
-            print("Check https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam.html")
-
-        return True
-
-    except NoCredentialsError:
-        print("❌ ERROR: AWS credentials not found.")
-        print("   Please run 'aws configure' in your terminal.")
-        return False
-    except ClientError as e:
-        # Handle potential errors like invalid keys
-        error_code = e.response.get("Error", {}).get("Code")
-        if error_code == "InvalidClientTokenId":
-            print("❌ ERROR: Your AWS Access Key ID is invalid.")
-        elif error_code == "SignatureDoesNotMatch":
-            print("❌ ERROR: Your AWS Secret Access Key is likely incorrect.")
-        else:
-            print(f"❌ An unexpected AWS client error occurred: {e}")
-        return False
-    except Exception as e:
-        print(f"❌ An unexpected error occurred: {e}")
-        return False
+    if bedrock_result["success"]:
+        print(f"✅ {bedrock_result['message']}")
+        print("\n--- ✅ AWS Setup Complete and Verified! ---")
+    else:
+        print("❌ Bedrock access check FAILED.")
+        print(f"   Error: {bedrock_result['message']}")
+        print(
+            "   Please ensure your IAM user has permissions for Bedrock and you have requested model access in the console."
+        )
 
 
 if __name__ == "__main__":
-    verify_aws_credentials()
+    verify_aws_setup()

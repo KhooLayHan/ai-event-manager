@@ -1,36 +1,81 @@
-import sys
+import json
+from unittest.mock import MagicMock, patch
 
-from src.aws.bedrock import get_basic_response, verify_bedrock_access
+import pytest
+
+from src.aws.bedrock import get_basic_response
 
 
-def main():
+class MockResponse:
     """
-    Test running the Bedrock API with real credentials and print the results.
-
+    Mock response class for simulating API responses.
     """
-    print("Running Bedrock access test...")
+
+    def __init__(self, body_dict):
+        self.body_dict = body_dict
+
+    def get(self, key):
+        if key == "body":
+            return self
+
+    def read(self):
+        return json.dumps(self.body_dict)
+
+
+@pytest.fixture
+def mock_bedrock_client():
+    """
+    Mock Bedrock client fixture for testing.
+    """
+
+    with patch("boto3.client") as mock_client:
+        # Create a mock instance of the Bedrock client
+        mock_bedrock = MagicMock()
+
+        # Configure the invoke_model method to return a successful mock response
+        mock_response = MockResponse(
+            {"results": [{"outputText": "This is a test response from Titan model"}]}
+        )
+        mock_bedrock.invoke_model.return_value = {"body": mock_response}  # No exception by default
+
+        # Configure the list_foundation_models method
+        mock_bedrock.list_foundation_models.return_value = {
+            "modelSummaries": [{"modelId": "amazon.titan-text-lite-v1"}]
+        }
+
+        # Configure the client factory to return our mock
+        mock_client.return_value = mock_bedrock
+        yield mock_bedrock
+
+
+@patch("boto3.client")
+def test_get_basic_response_client_error(mock_client):
+    """
+    Test `get_basic_response` function with client error handles gracefully.
+    """
+
+    # Configure the client to raise a ClientError
+    from botocore.exceptions import ClientError
+
+    mock_bedrock = MagicMock()
+    mock_bedrock.invoke_model.side_effect = ClientError(
+        error_response={"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
+        operation_name="InvokeModel",
+    )
+    mock_client.return_value = mock_bedrock
+
+    # Calls the function and verify it returns None
+    response = get_basic_response("Test prompt")
+    assert response is None
+
+
+def test_verify_bedrock_access_success(mock_bedrock_client):
+    """
+    Test `verify_bedrock_access` function for successful access.
+    """
+    from src.aws.bedrock import verify_bedrock_access
+
     result = verify_bedrock_access()
-
-    print(f"Bedrock access test result: {result['message']}")
-
-    if not result["success"]:
-        print("Bedrock access test failed.")
-        sys.exit(1)
-
-    # If we have access, testing sending a simple prompt
-    print("Testing Titan Text model with a simple prompt...")
-    prompt = "Write a haiku about crowd management at events."
-
-    response = get_basic_response("Hello, Bedrock!")
-
-    if response:
-        print(f"\nPrompt: {prompt}")
-        print(f"Received response from Titan: {response}")
-        print("\nSuccessfully communicated with Amazon Bedrock!")
-    else:
-        print("\nFailed to get a response from Amazon Bedrock Titan Model.")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
+    assert result["success"] is True
+    assert "Bedrock access verified" in result["message"]
+    assert "1 Amazon models" in result["message"]

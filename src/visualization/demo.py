@@ -43,9 +43,9 @@ metrics_placeholder = st.empty()
 st.markdown("""
 <div style='margin-top: 1em; margin-bottom: 1em;'>
 <b>Legend:</b><br>
-<span style='display:inline-block;width:18px;height:18px;background:#1f77b4;border-radius:50%;margin-right:6px;vertical-align:middle;'></span> Attendee<br>
+<span style='display:inline-block;width:18px;height:18px;background:#1f77b4;border-radius:50%;margin-right:6px;vertical-align:middle;'></span> Entry<br>
 <span style='display:inline-block;width:18px;height:18px;background:#2ca02c;border-radius:50%;margin-right:6px;vertical-align:middle;'></span> Exit<br>
-<span style='display:inline-block;width:18px;height:18px;background:#d62728;border-radius:50%;margin-right:6px;vertical-align:middle;'></span> Entry<br>
+<span style='display:inline-block;width:18px;height:18px;background:#d62728;border-radius:50%;margin-right:6px;vertical-align:middle;'></span> Attendee<br>
 <span style='display:inline-block;width:18px;height:18px;background:#111111;border-radius:50%;margin-right:6px;vertical-align:middle;'></span> Wall/Obstacle<br>
 <span style='display:inline-block;width:18px;height:18px;background:#FFFFFF;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid #ccc;'></span> Empty/Walkable
 </div>

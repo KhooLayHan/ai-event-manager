@@ -13,8 +13,7 @@ if PROJECT_ROOT not in sys.path:
 from src.shared_models import SimulationParameters
 from src.simulation.core import run_simulation_step_by_step
 
-# Cap aligned with backend default (was 300 in UI)
-MAX_STEPS_UI = 200
+
 
 st.title("AI Event Manager: Demo")
 
@@ -27,7 +26,6 @@ gate_count = st.number_input("Number of Open Gates", 1, 10, 2)
 
 st.subheader("Simulation")
 st.info("Press Run to stream the simulation.")
-st.caption(f"Stop conditions: all attendees finished OR {MAX_STEPS_UI} steps cap (aligned with backend).")
 
 # Map scenario to an optimization goal label (optional informational use)
 goal = "Maximum Safety" if scenario in ("Evacuation",) else "Balanced Safety & Cost"
@@ -56,30 +54,32 @@ if run_clicked:
 	total_attendees = attendees  # value from the frontend user choice
 
 	if final_only:
-		# Consume the generator and keep the last frame/metrics
+		# Consume the generator and keep the last frame/metrics/stats
 		step = 0
 		last_grid = None
 		last_metrics = None
-		for grid, metrics, _ in run_simulation_step_by_step(params):
+		last_stats = None
+		for grid, metrics, stats in run_simulation_step_by_step(params):
 			step += 1
 			last_grid = grid
 			last_metrics = metrics
+			last_stats = stats
 
-		if last_grid is not None and last_metrics is not None:
+		if last_grid is not None and last_metrics is not None and last_stats is not None:
 			fig, ax = plt.subplots(figsize=(6, 4))
 			cmap = plt.matplotlib.colors.ListedColormap(
 				["#FFFFFF", "#111111", "#1f77b4", "#2ca02c", "#d62728"]
 			)
-			ax.imshow(last_grid, cmap=cmap, interpolation="nearest")
+			im = ax.imshow(last_grid, cmap=cmap, interpolation="nearest", vmin=0, vmax=4)
 			ax.set_xticks([])
 			ax.set_yticks([])
-			ax.set_title(f"{scenario} — Final Result (Step {step})")
+			ax.set_title(f"{scenario} — Final Result")
 			frame_placeholder.pyplot(fig, clear_figure=True)
 			plt.close(fig)
 
-			active_attendees = int((last_grid == 4).sum())
-			completed = max(0, total_attendees - active_attendees)
-			efficiency = (completed / total_attendees) if total_attendees else 0.0
+			active_attendees = last_stats["active_attendees"]
+			completed = last_stats["completed"]
+			efficiency = last_stats["efficiency"]
 
 			metrics_placeholder.markdown(
 				f"- Step: **{step}**\n"
@@ -97,24 +97,24 @@ if run_clicked:
 	else:
 		# Stream frame-by-frame
 		step = 0
-		for grid, metrics, _ in run_simulation_step_by_step(params):
+		for grid, metrics, stats in run_simulation_step_by_step(params):
 			step += 1
 			# Render grid as a discrete heatmap
 			fig, ax = plt.subplots(figsize=(6, 4))
 			cmap = plt.matplotlib.colors.ListedColormap(
 				["#FFFFFF", "#111111", "#1f77b4", "#2ca02c", "#d62728"]
 			)
-			ax.imshow(grid, cmap=cmap, interpolation="nearest")
+			im = ax.imshow(grid, cmap=cmap, interpolation="nearest", vmin=0, vmax=4)
 			ax.set_xticks([])
 			ax.set_yticks([])
 			ax.set_title(f"{scenario} — Step {step}")
 			frame_placeholder.pyplot(fig, clear_figure=True)
 			plt.close(fig)
 
-			# Compute live attendee metrics from the grid visualization
-			active_attendees = int((grid == 4).sum())
-			completed = max(0, total_attendees - active_attendees)
-			efficiency = (completed / total_attendees) if total_attendees else 0.0
+			# Use simulation stats for metrics
+			active_attendees = stats["active_attendees"]
+			completed = stats["completed"]
+			efficiency = stats["efficiency"]
 
 			metrics_placeholder.markdown(
 				f"- Step: **{step}**\n"
@@ -126,13 +126,9 @@ if run_clicked:
 				f"- Peak congestion: **{metrics.peak_congestion_percent:.2f}**"
 			)
 
-			# Stop conditions to avoid endless runs
+			# Stop condition: all attendees finished
 			if active_attendees == 0:
 				st.success("All attendees reached exits. Simulation complete.")
-				break
-			# Cap aligned with backend default
-			if step >= MAX_STEPS_UI:
-				st.warning(f"Stopped after {MAX_STEPS_UI} steps (cap).")
 				break
 
 			# Small delay to visualize progression smoothly

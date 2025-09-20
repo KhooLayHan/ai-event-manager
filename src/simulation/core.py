@@ -28,6 +28,8 @@ def _load_map(csv_path: str) -> np.ndarray:
 
 
 def _find_cells(grid: np.ndarray, kinds: Sequence[str]) -> Set[Coord]:
+    """Find all cells of the given kinds in the grid."""
+
     kinds_set = set(kinds)
     cells: Set[Coord] = set()
     for r in range(grid.shape[0]):
@@ -66,12 +68,15 @@ def _bfs_distance_to_exits(grid: np.ndarray, exits: Set[Coord]) -> List[List[int
 
 @dataclass
 class SimulationConfig:
+    """Configuration for a simulation run."""
+
     map_path: str
     n_attendees: int
-    max_steps: int = 200
 
 
 class Simulation:
+    """Main simulation engine for crowd movement."""
+
     def __init__(self, config: SimulationConfig):
         self.config = config
         self.grid = _load_map(config.map_path)
@@ -95,19 +100,31 @@ class Simulation:
         self.time_step = 0
         self.completed_ids: Set[int] = set()
 
-    def step(self) -> None:
-        self.time_step += 1
-        occupied = {a.pos for a in self.attendees if not a.reached}
-        desired: List[Tuple[int, Coord, Coord]] = []  # (id, from, to)
+    def _step_once(self) -> None:
+        """
+        Perform one step of the simulation (move all attendees once -- for run all).
 
-        # Phase 1: each attendee decides desired next position
+        Step-by-step logic for moving attendees:
+        1. Gather all currently occupied cells (by attendees who haven't finished).
+        2. For each attendee who hasn't finished:
+           a. Decide their desired next position (neighbor cell that reduces distance to exit, not occupied, walkable).
+        3. Resolve conflicts:
+           a. If multiple attendees want the same cell, only the lowest id moves; others stay put.
+        4. Apply moves:
+           a. Move each attendee to their resolved position.
+           b. If an attendee reaches an exit, mark as completed.
+        5. Increment the simulation time step.
+        """
+        # 1. Gather occupied cells
+        occupied = {a.pos for a in self.attendees if not a.reached}
+        desired: List[Tuple[int, Coord, Coord]] = []
+        # 2. Decide desired next position for each attendee
         for a in self.attendees:
             if a.reached:
                 continue
             nxt = a.decide_next_step(self.distance_map, self.walkable, self.exits, occupied)
             desired.append((a.id, a.pos, nxt))
-
-        # Phase 2: resolve simple conflicts (two attendees wanting same cell). Priority by lower id.
+        # 3. Resolve conflicts (lowest id wins)
         claims: dict[Coord, int] = {}
         final_moves: dict[int, Coord] = {}
         for aid, frm, to in sorted(desired, key=lambda x: x[0]):
@@ -115,9 +132,8 @@ class Simulation:
                 claims[to] = aid
                 final_moves[aid] = to
             else:
-                final_moves[aid] = frm  # stay put
-
-        # Phase 3: apply moves
+                final_moves[aid] = frm  # stay put if blocked
+        # 4. Apply moves and mark completed
         for a in self.attendees:
             if a.reached:
                 continue
@@ -125,8 +141,16 @@ class Simulation:
             if a.pos in self.exits:
                 a.reached = True
                 self.completed_ids.add(a.id)
+        # 5. Increment time step
+        self.time_step += 1
+
+    def run(self) -> None:
+        """Run the simulation until all attendees have reached exits."""
+        while len(self.completed_ids) < len(self.attendees):
+            self._step_once()
 
     def stats(self) -> dict:
+        """Return current simulation statistics."""
         completed = len(self.completed_ids)
         total = len(self.attendees)
         in_system = total - completed
@@ -137,8 +161,8 @@ class Simulation:
         efficiency = completed / total if total else 0.0
         # Peak congestion: 1 - completion_rate
         peak_congestion_percent = float(1.0 - efficiency)
-        # Average wait time (mins): estimate as (max_steps - time_step) / 2
-        avg_wait_time_mins = int(max(0, (self.config.max_steps - self.time_step) / 2))
+        # Average wait time (mins): estimate as (total time - time_step) / 2
+        avg_wait_time_mins = int(max(0, (self.time_step) / 2))
         # Active attendees: those not yet completed
         active_attendees = in_system
         return {
@@ -169,29 +193,43 @@ class Simulation:
         return vis
 
 
+def run_simulation(
+    params: SimulationParameters,
+) -> Tuple[np.ndarray, SimulationMetrics, dict]:
+    """
+    Run the grid simulation to completion and return the final visualization grid and metrics.
+    """
+    map_path = "data/venue_map.csv"
+    n_attendees = max(1, int(params.attendees / 20))
+    sim = Simulation(SimulationConfig(map_path=map_path, n_attendees=n_attendees))
+    sim.run()
+    grid = sim.render_grid()
+    s = sim.stats()
+    metrics = SimulationMetrics(
+        avg_wait_time_mins=s["avg_wait_time_mins"],
+        peak_congestion_percent=s["peak_congestion_percent"],
+    )
+    return grid, metrics, s
+
+
 def run_simulation_step_by_step(
     params: SimulationParameters,
-) -> Generator[Tuple[np.ndarray, SimulationMetrics], None, None]:
+) -> Generator[Tuple[np.ndarray, SimulationMetrics, dict], None, None]:
     """
-    Real backend generator: runs the grid simulation step-by-step.
-    It yields a visualization grid and rolling metrics each step.
+    Step-by-step simulation generator for UI animation.
+    Yields (grid, metrics, stats) at each step.
     """
-
-    # Map path from config/data directory; we assume working dir root.
     map_path = "data/venue_map.csv"
-    n_attendees = max(1, int(params.attendees / 20))  # scale down for demo speed
-    sim = Simulation(SimulationConfig(map_path=map_path, n_attendees=n_attendees, max_steps=200))
-
-    for _ in range(sim.config.max_steps):
-        sim.step()
+    n_attendees = max(1, int(params.attendees / 20))
+    sim = Simulation(SimulationConfig(map_path=map_path, n_attendees=n_attendees))
+    while True:
+        sim._step_once()
         grid = sim.render_grid()
         s = sim.stats()
-        # Pass all stats as a dict for now (or update SimulationMetrics to accept all fields)
         metrics = SimulationMetrics(
             avg_wait_time_mins=s["avg_wait_time_mins"],
             peak_congestion_percent=s["peak_congestion_percent"],
         )
-        # Yield grid, metrics, and all stats for the frontend
         yield grid, metrics, s
         if s["completed"] == s["total"]:
             break

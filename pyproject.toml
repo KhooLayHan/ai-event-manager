@@ -19,6 +19,7 @@ dependencies = [
     "pandas",
     "matplotlib",
     "boto3",
+    "python-dotenv>=1.1.1",
 ]
 
 [project.optional-dependencies]

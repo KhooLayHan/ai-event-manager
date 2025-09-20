@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.aws.bedrock import get_basic_response
+from src.aws.bedrock import get_basic_response, verify_bedrock_access
 
 
 class MockResponse:
@@ -73,9 +73,7 @@ def test_verify_bedrock_access_success(mock_bedrock_client):
     """
     Test `verify_bedrock_access` function for successful access.
     """
-    from src.aws.bedrock import verify_bedrock_access
 
     result = verify_bedrock_access()
     assert result["success"] is True
-    assert "Bedrock access verified" in result["message"]
-    assert "1 Amazon models" in result["message"]
+    assert "Successfully connected to Amazon Bedrock. Found 1 models." in result["message"]

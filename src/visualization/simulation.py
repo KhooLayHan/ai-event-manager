@@ -20,148 +20,168 @@ Refer to PLAN_FRONTEND_COMPONENTS.md for further details and rationale.
 """
 
 import streamlit as st
-
-# If using streamlit-image-comparison, import it (uncomment if installed)
 from streamlit_image_comparison import image_comparison
 
+# AWS Bedrock Titan integration
+import boto3
+import base64
 
-def show_simulation_dashboard(before_metrics, after_metrics, before_animation_frames, after_animation_frames, ai_recommendations, before_img_path=None, after_img_path=None):
-	# Inject custom CSS to set the image comparison slider color to black
-		st.markdown(
-		"""
-		<style>
-		/* Aggressively target the slider and handle for streamlit-image-comparison */
-		.image-comparison-slider {
-			background: #000 !important;
-			border-color: #000 !important;
-			box-shadow: 0 0 0 2px #000 !important;
-		}
-		.image-comparison-slider:before, .image-comparison-slider:after {
-			background: #000 !important;
-			border-color: #000 !important;
-		}
-		/* Target the handle arrow icons */
-		.image-comparison-slider svg {
-			fill: #000 !important;
-		}
-		/* Target the vertical line */
-		.image-comparison-divider {
-			background: #000 !important;
-		}
-		</style>
-		""",
-		unsafe_allow_html=True
-	)
+def generate_titan_image(prompt: str) -> "PIL.Image.Image":
+    """
+    Generate an image using AWS Bedrock Titan Image Generator G1 v2.
+    Returns a PIL Image object or None if generation fails.
+    """
+    try:
+        bedrock = boto3.client("bedrock-runtime", region_name="us-east-1")
+        response = bedrock.invoke_model(
+            modelId="amazon.titan-image-generator-g1-v2",
+            contentType="application/json",
+            accept="application/json",
+            body=f'{{"prompt": "{prompt}"}}'
+        )
+        result = response["body"].read()
+        # Titan returns base64-encoded image in JSON
+        import json
+        img_b64 = json.loads(result)["generated_image"]
+        img_bytes = base64.b64decode(img_b64)
+        from PIL import Image
+        import io
+        return Image.open(io.BytesIO(img_bytes))
+    except Exception as e:
+        st.error(f"Failed to generate image with Titan: {e}")
+        return None
 
+def show_simulation_dashboard(
+    before_metrics, after_metrics,
+    before_animation_frames, after_animation_frames,
+    ai_recommendations,
+    before_img_path=None, after_img_path=None,
+    use_titan=False
+):
     st.title("📊 Simulation Dashboard")
     st.markdown("**Goal:** A visually stunning and instantly understandable showcase of your project's impact.")
 
-	# Main Layout: Side-by-side columns
     col1, col2 = st.columns(2)
+    col1.header("Before AI Optimization")
+    col2.header("After AI Optimization")
 
-	# Column Headers
-	col1.header("Before AI Optimization")
-	col2.header("After AI Optimization")
+    anim_placeholder1 = col1.empty()
+    anim_placeholder2 = col2.empty()
 
-	# Animation Placeholders
-	anim_placeholder1 = col1.empty()
-	anim_placeholder2 = col2.empty()
+    with col1:
+        for metric, value in before_metrics.items():
+            st.metric(label=metric, value=value.get('value'), delta=value.get('delta'), delta_color=value.get('delta_color', 'normal'))
+    with col2:
+        for metric, value in after_metrics.items():
+            st.metric(label=metric, value=value.get('value'), delta=value.get('delta'), delta_color=value.get('delta_color', 'normal'))
 
-	# Key Performance Metrics
-	with col1:
-		for metric, value in before_metrics.items():
-			st.metric(label=metric, value=value.get('value'), delta=value.get('delta'), delta_color=value.get('delta_color', 'normal'))
-	with col2:
-		for metric, value in after_metrics.items():
-			st.metric(label=metric, value=value.get('value'), delta=value.get('delta'), delta_color=value.get('delta_color', 'normal'))
+    # Animation update loop (example: show first frame)
+    if before_animation_frames:
+        anim_placeholder1.image(before_animation_frames[0], caption="Crowd Movement (Before)")
+    if after_animation_frames:
+        anim_placeholder2.image(after_animation_frames[0], caption="Crowd Movement (After)")
 
-	# Animation update loop (example: show first frame)
-	# Replace with actual animation logic as needed
-	if before_animation_frames:
-		anim_placeholder1.image(before_animation_frames[0], caption="Crowd Movement (Before)")
-	if after_animation_frames:
-		anim_placeholder2.image(after_animation_frames[0], caption="Crowd Movement (After)")
+    with st.spinner("🤖 AI is analyzing scenarios..."):
+        pass
 
-	# AI "Thinking" Spinner (wrap Bedrock call in actual usage)
-	with st.spinner("🤖 AI is analyzing scenarios..."):
-		# Simulate AI processing (replace with actual call)
-		pass
+    with st.expander("💡 AI Recommendations", expanded=True):
+        for rec in ai_recommendations:
+            st.markdown(f"**Recommendation:** {rec['recommendation']}")
+            st.markdown(f"**Reason:** {rec['reason']}")
 
-	# AI Recommendations Display (Explainable AI)
-	with st.expander("💡 AI Recommendations", expanded=True):
-		for rec in ai_recommendations:
-			st.markdown(f"**Recommendation:** {rec['recommendation']}")
-			st.markdown(f"**Reason:** {rec['reason']}")
+    # Stretch Goal: Titan-generated images for comparison slider
+    import io
+    import os
+    from urllib.parse import urlparse
+    import requests
+    from PIL import Image
 
-	# Stretch Goal: Comparison Slider (if images provided)
-	import io
-	import os
-	from urllib.parse import urlparse
+    def load_image(path):
+        if os.path.exists(path):
+            try:
+                return Image.open(path)
+            except Exception as e:
+                st.error(f"Failed to load local image: {path}. Error: {e}")
+                return None
+        parsed = urlparse(path)
+        if parsed.scheme in ("http", "https"):
+            try:
+                resp = requests.get(path, timeout=5)
+                resp.raise_for_status()
+                return Image.open(io.BytesIO(resp.content))
+            except Exception as e:
+                st.error(f"Failed to load image from URL: {path}. Error: {e}")
+                return None
+        st.error(f"Image path is not a valid file or URL: {path}")
+        return None
 
-	import requests
-	from PIL import Image
-	def load_image(path):
-		# Check if local file
-		if os.path.exists(path):
-			try:
-				return Image.open(path)
-			except Exception as e:
-				st.error(f"Failed to load local image: {path}. Error: {e}")
-				return None
-		# Check if valid URL
-		parsed = urlparse(path)
-		if parsed.scheme in ("http", "https"):
-			try:
-				resp = requests.get(path, timeout=5)
-				resp.raise_for_status()
-				return Image.open(io.BytesIO(resp.content))
-			except Exception as e:
-				st.error(f"Failed to load image from URL: {path}. Error: {e}")
-				return None
-		st.error(f"Image path is not a valid file or URL: {path}")
-		return None
+    if use_titan:
+        st.markdown("### 🔀 Before vs After Heatmap Comparison (Titan Generated)")
+        before_prompt = "Crowd density heatmap before AI optimization at a concert venue"
+        after_prompt = "Crowd density heatmap after AI optimization at a concert venue"
+        before_img = generate_titan_image(before_prompt)
+        after_img = generate_titan_image(after_prompt)
+    elif before_img_path and after_img_path:
+        st.markdown("### 🔀 Before vs After Heatmap Comparison")
+        before_img = load_image(before_img_path)
+        after_img = load_image(after_img_path)
+    else:
+        before_img = after_img = None
 
-	if before_img_path and after_img_path:
-		st.markdown("### 🔀 Before vs After Heatmap Comparison")
-		before_img = load_image(before_img_path)
-		after_img = load_image(after_img_path)
-		if before_img and after_img:
-			image_comparison(
-				img1=before_img,
-				img2=after_img,
-				label1="Before",
-				label2="After"
-			)
-		else:
-			st.warning("Could not load one or both images for comparison. See error messages above.")
+    # If before_img_path and after_img_path are PIL images, use them directly
+    if isinstance(before_img_path, Image.Image) and isinstance(after_img_path, Image.Image):
+        before_img = before_img_path
+        after_img = after_img_path
+    elif before_img_path and after_img_path:
+        before_img = load_image(before_img_path)
+        after_img = load_image(after_img_path)
+    else:
+        before_img = after_img = None
+
+    if before_img and after_img:
+        image_comparison(
+            img1=before_img,
+            img2=after_img,
+            label1="Before",
+            label2="After"
+        )
+    elif use_titan:
+        st.warning("Could not generate one or both images with Titan. See error messages above.")
+    elif before_img_path and after_img_path:
+        st.warning("Could not load one or both images for comparison. See error messages above.")
 
 # Demo: Show dashboard with sample data if run directly
 if __name__ == "__main__":
-	# Sample metrics
-	before_metrics = {
-		"Avg. Wait Time": {"value": "28 Mins", "delta": "High Risk", "delta_color": "inverse"},
-		"Gate Utilization": {"value": "65%", "delta": "-", "delta_color": "normal"}
-	}
-	after_metrics = {
-		"Avg. Wait Time": {"value": "7 Mins", "delta": "-75%", "delta_color": "normal"},
-		"Gate Utilization": {"value": "90%", "delta": "+25%", "delta_color": "normal"}
-	}
-	# Use placeholder images (can be replaced with actual frames)
-	before_animation_frames = ["https://via.placeholder.com/300x200?text=Before"]
-	after_animation_frames = ["https://via.placeholder.com/300x200?text=After"]
-	ai_recommendations = [
-		{"recommendation": "Open Gate C for faster flow.", "reason": "Simulation shows congestion at Gate B."},
-		{"recommendation": "Increase signage near exits.", "reason": "Evacuation time reduced by 30%."}
-	]
-	# Optional: demo images for comparison slider
-	before_img_path = "./mock_image/before-crowd-control.png"
-	after_img_path = "./mock_image/after-crowd-control.png"
-	show_simulation_dashboard(
-		before_metrics,
-		after_metrics,
-		before_animation_frames,
-		after_animation_frames,
-		ai_recommendations,
-		before_img_path,
-		after_img_path
-	)
+    # Sample metrics
+    before_metrics = {
+        "Avg. Wait Time": {"value": "28 Mins", "delta": "High Risk", "delta_color": "inverse"},
+        "Gate Utilization": {"value": "65%", "delta": "-", "delta_color": "normal"}
+    }
+    after_metrics = {
+        "Avg. Wait Time": {"value": "7 Mins", "delta": "-75%", "delta_color": "normal"},
+        "Gate Utilization": {"value": "90%", "delta": "+25%", "delta_color": "normal"}
+    }
+    # Remove mock image URLs; animation frames can be empty or replaced with Titan-generated images if desired
+    before_animation_frames = []
+    after_animation_frames = []
+    ai_recommendations = [
+        {"recommendation": "Open Gate C for faster flow.", "reason": "Simulation shows congestion at Gate B."},
+        {"recommendation": "Increase signage near exits.", "reason": "Evacuation time reduced by 30%."}
+    ]
+
+    # Generate images using Titan
+    before_prompt = "Crowd density heatmap before AI optimization at a concert venue"
+    after_prompt = "Crowd density heatmap after AI optimization at a concert venue"
+    before_img = generate_titan_image(before_prompt)
+    after_img = generate_titan_image(after_prompt)
+
+    # Pass generated images directly to the dashboard
+    show_simulation_dashboard(
+        before_metrics,
+        after_metrics,
+        before_animation_frames,
+        after_animation_frames,
+        ai_recommendations,
+        before_img_path=before_img,   # Pass Titan-generated PIL image object
+        after_img_path=after_img      # Pass Titan-generated PIL image object
+    )

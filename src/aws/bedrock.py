@@ -52,32 +52,80 @@ def get_ai_recommendations(params: SimulationParameters) -> List[AIRecommendatio
 
     try:
         # Construct a prompt for the model that asks for JSON-formatted outputs.
-        prompt = f"""
+        base_prompt = f"""
         You are an AI event management assistant helping organizers manage crowds at events."
 
         Based on the following event parameters:
         - Attendees: {params.attendees}
         - Number of Open Gates: {params.open_gates}
         - Optimization Goal: {params.optimization_goal}
+        """
 
+        # Goal-specific prompt components
+        if params.optimization_goal == "Maximum Safety":
+            goal_prompt = """
+            Your primary objective is to MAXIMIZE SAFETY regardless of cost implications.
+
+            Focus on recommendations that:
+            - Prioritize attendee safety above all other considerations
+            - Minimize congestion, wait times, and potential hazards
+            - May require additional resources, staff, or infrastructure
+            - Provide the most secure and controlled environment possible
+
+            Examples of safety-first recommendations:
+            - Deploy additional security personnel at all entry points
+            - Open all available gates to distribute crowds more evenly
+            - Implement comprehensive real-time monitoring systems
+            - Increase medical staff and emergency response capabilities
+            """
+        else:  # Balanced Safety & Cost
+            goal_prompt = """
+            Your objective is to BALANCE SAFETY IMPROVEMENTS with COST EFFICIENCY.
+
+            Focus on recommendations that:
+            - Maintain acceptable safety standards while minimizing expenses
+            - Optimize existing resources rather than adding new ones
+            - Consider the financial impact of each safety measure
+            - Prioritize solutions with high safety-to-cost ratios
+
+            Examples of balanced recommendations:
+            - Redistribute existing staff to high-traffic areas rather than hiring more
+            - Create temporary queueing systems using available barriers
+            - Use pre-event communications to influence attendee behavior
+            - Implement phased entry times using existing ticketing systems
+            """
+
+            # Focus on recommendations that:
+            # - Enhance safety while being mindful of budget constraints
+            # - Optimize existing resources and infrastructure
+            # - Suggest cost-effective measures that still improve safety
+            # - Avoid expensive solutions unless absolutely necessary
+
+            # Examples of balanced recommendations:
+            # - Open a few additional gates based on expected crowd flow
+            # - Reallocate existing staff to high-traffic areas
+            # - Use signage and announcements to manage crowd movement
+            # - Implement basic monitoring systems using existing technology
+
+        # Format specification for the response
+        format_prompt = """
         Please provide TWO recommendations for crowd management that would improve safety and efficiency at the event.
-
-        If the optimization goal is "Maxium Safety", prioritize recommendations that maximize safety regardless of cost.
-
-        If the optimization goal is "Balanced Safety & Cost", provide recommendations that balance safety improvements with budget considerations.
 
         Format your response as a valid JSON array with each object containing 'recommendation' and 'reason' fields. For example:
 
         [
             {{"recommendation": "Open Gates C and D", "reason": "Distributing attendees across more entry points will reduce wait times and congestion."}},
             {{"recommendation": "Deploy additional staff", "reason": "More staff at key areas can guide attendees and prevent bottlenecks."}},
-            {{"recommendation": "Increase the number of open gates to reduce bottlenecks.", "reason": "More open gates will facilitate smoother entry and exit, enhancing overall safety."}},
-            {{"recommendation": "Implement real-time crowd monitoring using AI.", "reason": "AI can analyze crowd patterns and predict potential issues, allowing for proactive management."}}
         ]
 
         Return ONLY the JSON array with no additional text.
         """
         # Note the above are sample JSON responses, can be modified as needed.
+        # {{"recommendation": "Increase the number of open gates to reduce bottlenecks.", "reason": "More open gates will facilitate smoother entry and exit, enhancing overall safety."}},
+        # {{"recommendation": "Implement real-time crowd monitoring using AI.", "reason": "AI can analyze crowd patterns and predict potential issues, allowing for proactive management."}}
+
+        # Combine the prompt components
+        prompt = base_prompt + goal_prompt + format_prompt
 
         # Call Bedrock with the structured prompt
         request_body = {

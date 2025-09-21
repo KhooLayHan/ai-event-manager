@@ -21,42 +21,19 @@ Refer to PLAN_FRONTEND_COMPONENTS.md for further details and rationale.
 
 import streamlit as st
 from streamlit_image_comparison import image_comparison
-
-# AWS Bedrock Titan integration
-import boto3
-import base64
-
-def generate_titan_image(prompt: str) -> "PIL.Image.Image":
-    """
-    Generate an image using AWS Bedrock Titan Image Generator G1 v2.
-    Returns a PIL Image object or None if generation fails.
-    """
-    try:
-        bedrock = boto3.client("bedrock-runtime", region_name="us-east-1")
-        response = bedrock.invoke_model(
-            modelId="amazon.titan-image-generator-g1-v2",
-            contentType="application/json",
-            accept="application/json",
-            body=f'{{"prompt": "{prompt}"}}'
-        )
-        result = response["body"].read()
-        # Titan returns base64-encoded image in JSON
-        import json
-        img_b64 = json.loads(result)["generated_image"]
-        img_bytes = base64.b64decode(img_b64)
-        from PIL import Image
-        import io
-        return Image.open(io.BytesIO(img_bytes))
-    except Exception as e:
-        st.error(f"Failed to generate image with Titan: {e}")
-        return None
+try:
+    from src.aws.bedrock import generate_titan_image
+except ModuleNotFoundError:
+    import sys, os
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+    from src.aws.bedrock import generate_titan_image
 
 def show_simulation_dashboard(
     before_metrics, after_metrics,
     before_animation_frames, after_animation_frames,
     ai_recommendations,
-    before_img_path=None, after_img_path=None,
-    use_titan=False
+    before_img=None, after_img=None,
+    before_img_error=None, after_img_error=None
 ):
     st.title("📊 Simulation Dashboard")
     st.markdown("**Goal:** A visually stunning and instantly understandable showcase of your project's impact.")
@@ -89,55 +66,8 @@ def show_simulation_dashboard(
             st.markdown(f"**Recommendation:** {rec['recommendation']}")
             st.markdown(f"**Reason:** {rec['reason']}")
 
-    # Stretch Goal: Titan-generated images for comparison slider
-    import io
-    import os
-    from urllib.parse import urlparse
-    import requests
-    from PIL import Image
-
-    def load_image(path):
-        if os.path.exists(path):
-            try:
-                return Image.open(path)
-            except Exception as e:
-                st.error(f"Failed to load local image: {path}. Error: {e}")
-                return None
-        parsed = urlparse(path)
-        if parsed.scheme in ("http", "https"):
-            try:
-                resp = requests.get(path, timeout=5)
-                resp.raise_for_status()
-                return Image.open(io.BytesIO(resp.content))
-            except Exception as e:
-                st.error(f"Failed to load image from URL: {path}. Error: {e}")
-                return None
-        st.error(f"Image path is not a valid file or URL: {path}")
-        return None
-
-    if use_titan:
-        st.markdown("### 🔀 Before vs After Heatmap Comparison (Titan Generated)")
-        before_prompt = "Crowd density heatmap before AI optimization at a concert venue"
-        after_prompt = "Crowd density heatmap after AI optimization at a concert venue"
-        before_img = generate_titan_image(before_prompt)
-        after_img = generate_titan_image(after_prompt)
-    elif before_img_path and after_img_path:
-        st.markdown("### 🔀 Before vs After Heatmap Comparison")
-        before_img = load_image(before_img_path)
-        after_img = load_image(after_img_path)
-    else:
-        before_img = after_img = None
-
-    # If before_img_path and after_img_path are PIL images, use them directly
-    if isinstance(before_img_path, Image.Image) and isinstance(after_img_path, Image.Image):
-        before_img = before_img_path
-        after_img = after_img_path
-    elif before_img_path and after_img_path:
-        before_img = load_image(before_img_path)
-        after_img = load_image(after_img_path)
-    else:
-        before_img = after_img = None
-
+    # Titan-generated images for comparison slider
+    st.markdown("### 🔀 Before vs After Heatmap Comparison (Titan Generated)")
     if before_img and after_img:
         image_comparison(
             img1=before_img,
@@ -145,14 +75,15 @@ def show_simulation_dashboard(
             label1="Before",
             label2="After"
         )
-    elif use_titan:
-        st.warning("Could not generate one or both images with Titan. See error messages above.")
-    elif before_img_path and after_img_path:
-        st.warning("Could not load one or both images for comparison. See error messages above.")
+    else:
+        st.warning("Could not generate one or both images with Titan.")
+        if before_img_error:
+            st.error(f"Titan error (before): {before_img_error}")
+        if after_img_error:
+            st.error(f"Titan error (after): {after_img_error}")
 
 # Demo: Show dashboard with sample data if run directly
 if __name__ == "__main__":
-    # Sample metrics
     before_metrics = {
         "Avg. Wait Time": {"value": "28 Mins", "delta": "High Risk", "delta_color": "inverse"},
         "Gate Utilization": {"value": "65%", "delta": "-", "delta_color": "normal"}
@@ -161,7 +92,6 @@ if __name__ == "__main__":
         "Avg. Wait Time": {"value": "7 Mins", "delta": "-75%", "delta_color": "normal"},
         "Gate Utilization": {"value": "90%", "delta": "+25%", "delta_color": "normal"}
     }
-    # Remove mock image URLs; animation frames can be empty or replaced with Titan-generated images if desired
     before_animation_frames = []
     after_animation_frames = []
     ai_recommendations = [
@@ -169,19 +99,22 @@ if __name__ == "__main__":
         {"recommendation": "Increase signage near exits.", "reason": "Evacuation time reduced by 30%."}
     ]
 
-    # Generate images using Titan
+    # Ensure sys.path is set for direct execution
+    import sys, os
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+    from src.aws.bedrock import generate_titan_image
+
     before_prompt = "Crowd density heatmap before AI optimization at a concert venue"
     after_prompt = "Crowd density heatmap after AI optimization at a concert venue"
     before_img = generate_titan_image(before_prompt)
     after_img = generate_titan_image(after_prompt)
 
-    # Pass generated images directly to the dashboard
     show_simulation_dashboard(
         before_metrics,
         after_metrics,
         before_animation_frames,
         after_animation_frames,
         ai_recommendations,
-        before_img_path=before_img,   # Pass Titan-generated PIL image object
-        after_img_path=after_img      # Pass Titan-generated PIL image object
+        before_img=before_img,
+        after_img=after_img
     )

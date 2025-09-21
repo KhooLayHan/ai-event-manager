@@ -12,8 +12,14 @@ from src.stubs.mock_backend import get_ai_recommendations, run_simulation_step_b
 if "is_simulating" not in st.session_state:
     st.session_state.is_simulating = False
 
-if "grid_state" not in st.session_state:
-    st.session_state.grid_state = None
+if "is_first_run" not in st.session_state:
+    st.session_state.is_first_run = True
+
+if "grid_state_before" not in st.session_state:
+    st.session_state.grid_state_before = None
+
+if "grid_state_after" not in st.session_state:
+    st.session_state.grid_state_after = None
 
 if "metrics" not in st.session_state:
     st.session_state.metrics = {"Wait Time": [], "Peak Congestion": []}
@@ -34,7 +40,6 @@ with st.sidebar:
 
     if start_button:
         # Reset the simulation state
-        st.session_state.grid_state = None
         st.session_state.metrics.get("Wait Time").append([])
         st.session_state.metrics.get("Peak Congestion").append([])
         st.session_state.is_simulating = True
@@ -43,6 +48,8 @@ with st.sidebar:
 
     if stop_button:
         st.session_state.is_simulating = False
+        if st.session_state.is_first_run:
+            st.session_state.is_first_run = False
 
     st.divider()
 
@@ -66,8 +73,12 @@ with st.sidebar:
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("Before AI Optimization")
-    visual_figure = st.empty()
+    st.subheader("🔴 Before AI Optimization")
+    visual_figure_before = st.empty()
+
+with col2:
+    st.subheader("🟢 After AI Optimization")
+    visual_figure_after = st.empty()
 
 st.subheader("Simulation Metrics")
 
@@ -93,8 +104,8 @@ def update_ui():
     peak_congestion_data = st.session_state.metrics.get("Peak Congestion")
 
     # update figure
-    if st.session_state.grid_state is None:
-        visual_figure.pyplot(plt.figure(figsize=(10, 10)))
+    if st.session_state.grid_state_before is None:
+        visual_figure_before.pyplot(plt.figure(figsize=(10, 10)), clear_figure=True)
     else:
         # figure color map
         cmap = colors.ListedColormap(["red", "blue"])
@@ -104,8 +115,22 @@ def update_ui():
         # plot grid
         fig, ax = plt.subplots()
         ax.axis("off")
-        ax.imshow(st.session_state.grid_state, cmap=cmap, norm=norm)
-        visual_figure.pyplot(fig)
+        ax.imshow(st.session_state.grid_state_before, cmap=cmap, norm=norm)
+        visual_figure_before.pyplot(fig, clear_figure=True)
+
+    if st.session_state.grid_state_after is None:
+        pass
+    else:
+        # figure color map
+        cmap = colors.ListedColormap(["red", "blue"])
+        bounds = [0, 0.5, 1]
+        norm = colors.BoundaryNorm(bounds, cmap.N)
+
+        # plot grid
+        fig, ax = plt.subplots()
+        ax.axis("off")
+        ax.imshow(st.session_state.grid_state_after, cmap=cmap, norm=norm)
+        visual_figure_after.pyplot(fig, clear_figure=True)
 
     # update metrics
     if len(wait_time_data) == 0 or len(wait_time_data[-1]) == 0:
@@ -145,7 +170,10 @@ while st.session_state.is_simulating:
         SimulationParameters(attendees, gate_count, scenario)
     ):
         # store data
-        st.session_state.grid_state = grid_state
+        if st.session_state.is_first_run:
+            st.session_state.grid_state_before = grid_state
+        else:
+            st.session_state.grid_state_after = grid_state
         st.session_state.metrics.get("Wait Time")[-1].append(metrics.avg_wait_time_mins)
         st.session_state.metrics.get("Peak Congestion")[-1].append(metrics.peak_congestion_percent)
 
@@ -153,4 +181,6 @@ while st.session_state.is_simulating:
         sleep(0.1)
 
     st.session_state.is_simulating = False
+    if st.session_state.is_first_run:
+        st.session_state.is_first_run = False
     update_ui()

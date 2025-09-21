@@ -6,6 +6,9 @@ from typing import Dict, List, Optional, Union
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError, NoCredentialsError
+from PIL import Image
+import base64
+import io
 
 from src.shared_models import AIRecommendation, SimulationParameters
 
@@ -203,3 +206,21 @@ def verify_bedrock_access() -> Dict[str, Union[bool, str]]:
         error_message = f"An unexpected error occurred: {e}"
         logger.error(error_message)
         return {"success": False, "message": error_message}
+
+
+def generate_titan_image(prompt: str) -> Image.Image:
+    try:
+        bedrock = boto3.client("bedrock-runtime", region_name="us-east-1")
+        response = bedrock.invoke_model(
+            modelId="amazon.titan-image-generator-g1-v2",
+            contentType="application/json",
+            accept="application/json",
+            body=json.dumps({"prompt": prompt})
+        )
+        result = response["body"].read()
+        img_b64 = json.loads(result)["generated_image"]
+        img_bytes = base64.b64decode(img_b64)
+        return Image.open(io.BytesIO(img_bytes))
+    except Exception as e:
+        # Optionally log error
+        return None

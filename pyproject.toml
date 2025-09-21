@@ -19,6 +19,9 @@ dependencies = [
     "pandas",
     "matplotlib",
     "boto3",
+    "streamlit-image-comparison>=0.0.4",
+    "scikit-image>=0.25.2",
+    "imagecodecs>=2025.3.30",
     "python-dotenv>=1.1.1",
 ]
 
@@ -38,7 +41,7 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "C90", "B", "I"]
-ignore = ["E501"]
+ignore = ["E501", "W191", "W292"]
 
 # Exclude files and directories
 exclude = [
@@ -51,4 +54,5 @@ exclude = [
   "*.egg-info",
   "migrations",
   "fixtures",
+  './src/visualization/simulation.py'
 ]

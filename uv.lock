@@ -19,11 +19,8 @@ dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pandas" },
-<<<<<<< HEAD
     { name = "scikit-image" },
-=======
     { name = "python-dotenv" },
->>>>>>> main
     { name = "streamlit" },
     { name = "streamlit-image-comparison" },
 ]
@@ -48,11 +45,8 @@ requires-dist = [
     { name = "pandas" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-mock", marker = "extra == 'dev'" },
-<<<<<<< HEAD
     { name = "scikit-image", specifier = ">=0.25.2" },
-=======
     { name = "python-dotenv", specifier = ">=1.1.1" },
->>>>>>> main
     { name = "streamlit" },
     { name = "streamlit-image-comparison", specifier = ">=0.0.4" },
 ]

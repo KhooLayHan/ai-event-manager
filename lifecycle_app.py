@@ -302,22 +302,8 @@ def run_full_lifecycle_demo(attendee_count: int, initial_gates: int, config: dic
         ai_analysis = get_lifecycle_fallback_recommendation(lifecycle_summary, attendee_count, initial_gates)
     
     st.markdown("## 💡 AI Analysis")
-    st.markdown(f"""
-    <div class="recommendation-card">
-        <h4>📋 Assessment for {scenario_name.replace('_', ' ').title()}</h4>
-        <p><strong>Critical Phase:</strong> {ai_analysis['critical_phase'].replace('_', ' ').title()}</p>
-        <p>{ai_analysis['overall_assessment']}</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    for i, rec in enumerate(ai_analysis['recommendations'], 1):
-        st.markdown(f"""
-        <div class="recommendation-card">
-            <h5>Recommendation {i}</h5>
-            <p><strong>{rec['recommendation']}</strong></p>
-            <p><em>{rec['reason']}</em></p>
-        </div>
-        """, unsafe_allow_html=True)
+    st.write("**Debug - AI Analysis Result:**")
+    st.json(ai_analysis)
     
     # Extract AI optimization parameters
     optimized_entrance_gates = ai_analysis['optimized_parameters'].get('recommended_entrance_gates', initial_gates + 2)
@@ -340,6 +326,8 @@ def run_full_lifecycle_demo(attendee_count: int, initial_gates: int, config: dic
             st.metric("Attendees", f"{attendee_count} → {optimized_attendees}", f"-{attendee_count - optimized_attendees}")
         else:
             st.metric("Attendees", "Optimal", "✓")
+    
+
     
     # Run after simulation with AI optimized parameters and dynamic venue map
     if "Fast" in simulation_speed:

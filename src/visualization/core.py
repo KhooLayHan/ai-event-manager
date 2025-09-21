@@ -94,11 +94,17 @@ def create_metrics_comparison_chart(before_metrics, after_metrics) -> plt.Figure
 
 def grid_to_base64_image(grid: np.ndarray, title: str = "") -> str:
     """Convert grid to base64 encoded image for Streamlit display"""
+    # Limit grid size to prevent memory errors
+    if grid.shape[0] > 100 or grid.shape[1] > 100:
+        # Downsample large grids
+        step = max(grid.shape[0] // 100, grid.shape[1] // 100, 1)
+        grid = grid[::step, ::step]
+    
     fig = create_simulation_plot(grid, title)
     
     # Convert to base64
     buffer = io.BytesIO()
-    fig.savefig(buffer, format='png', dpi=100, bbox_inches='tight')
+    fig.savefig(buffer, format='png', dpi=50, bbox_inches='tight')  # Reduced DPI
     buffer.seek(0)
     
     image_base64 = base64.b64encode(buffer.getvalue()).decode()

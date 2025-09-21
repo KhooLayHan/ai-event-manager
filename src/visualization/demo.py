@@ -20,13 +20,7 @@ if "metrics" not in st.session_state:
 
 st.title("CrowdFlow AI: Demo")
 
-col1, col2 = st.columns([6, 4])
-
-with col1:
-    st.subheader("Simulation Visualization")
-    visual_figure = st.empty()
-
-with col2:
+with st.sidebar:
     st.subheader("Simulation Parameters")
 
     venue = st.selectbox("Select Venue", ["Venue A", "Venue B", "Venue C"])
@@ -69,6 +63,11 @@ with col2:
                 - **Reason**: {ai_responce.reason}
             """)
 
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("Before AI Optimization")
+    visual_figure = st.empty()
 
 st.subheader("Simulation Metrics")
 
@@ -151,7 +150,7 @@ while st.session_state.is_simulating:
         st.session_state.metrics.get("Peak Congestion")[-1].append(metrics.peak_congestion_percent)
 
         update_ui()
-        sleep(0.5)
+        sleep(0.1)
 
     st.session_state.is_simulating = False
     update_ui()

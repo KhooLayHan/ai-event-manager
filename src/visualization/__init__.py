@@ -8,8 +8,8 @@ st.set_page_config(
 )
 
 demo = st.Page("demo.py", title="Demo", icon="🎉")
-about = st.Page("about.py", title="Project Details", icon="👨‍💻")
+about = st.Page("about.py", title="About", icon="👨‍💻")
 
-pg = st.navigation([demo, about])
+pg = st.navigation([demo, about], position="top")
 
 pg.run()

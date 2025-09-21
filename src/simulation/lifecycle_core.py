@@ -13,9 +13,20 @@ class FullEventLifecycleSimulation:
     
     def __init__(self, map_data: np.ndarray, scenario_path: str, open_gates_override: int):
         self.map_data = map_data.copy()
-        self.attendees: List[Attendee] = []
         self.current_step = 0
         
+        # Initialize metrics tracking properly
+        self.attendees: List[Attendee] = []
+        self.entry_times = {}  # Track when each attendee started waiting
+        self.wait_times = []   # Track individual wait times
+        self.peak_congestion = 0
+        
+        # Initialize wait time tracking per attendee
+        self.attendees: List[Attendee] = []
+        self.wait_times_distribution = []
+        self.max_wait_time = 0
+        
+        # Initialize simulation components
         self.config = self._load_config(scenario_path)
         self.total_attendees = self.config["attendee_count"]
         self.open_gates = open_gates_override
@@ -32,6 +43,10 @@ class FullEventLifecycleSimulation:
         
         self.locations = self._find_key_locations()
         self._create_attendees()
+        
+        # Add entry tracking
+        self.successful_entries = 0  # Count of successful entries
+        self.entry_progress = []     # Track entry rate progress
 
     def _load_config(self, scenario_path: str) -> Dict:
         config_path = Path(scenario_path) / "event_config.json"
@@ -52,8 +67,12 @@ class FullEventLifecycleSimulation:
 
     def _create_attendees(self):
         active_entrances = self.locations['entrances'][:self.open_gates]
-        if not active_entrances: return
+        if not active_entrances: 
+            return
 
+        self.attendees = []  # Reset attendees list
+        self.entry_times = {}  # Reset entry times
+        
         for i in range(self.total_attendees):
             entrance = active_entrances[i % len(active_entrances)]
             # IMPROVEMENT: The goal is a random spot in the open area, not a single point.
@@ -65,6 +84,7 @@ class FullEventLifecycleSimulation:
                 goal=(goal_location.x, goal_location.y)
             )
             self.attendees.append(attendee)
+            self.entry_times[i] = self.current_step  # Track entry time for wait time calculation
 
     def run_lifecycle_step(self):
         self.current_step += 1
@@ -119,27 +139,38 @@ class FullEventLifecycleSimulation:
             if attendee.goal is None or (attendee.x, attendee.y) == attendee.goal:
                 continue
 
+            # Check if attendee can't move due to density or no free space
             density = self._calculate_local_density(attendee.x, attendee.y, initial_occupied)
-            if density > 0.6 and np.random.rand() < density:
+            best_move = self._find_best_neighbor(attendee, next_occupied)
+            
+            # Increment wait time if attendee can't move
+            if (density > 0.6 and np.random.rand() < density) or not best_move:
+                attendee.total_wait_time_steps += 1
+                self.max_wait_time = max(self.max_wait_time, attendee.total_wait_time_steps)
                 next_occupied.add((attendee.x, attendee.y))
                 continue
 
-            best_move = self._find_best_neighbor(attendee, next_occupied)
-            if best_move:
-                attendee.x, attendee.y = best_move
-                next_occupied.add(best_move)
-                
-                # Check if attendee reached goal or gate
-                if (attendee.x, attendee.y) == attendee.goal and attendee.goal_reached_step is None:
-                    attendee.goal_reached_step = self.current_step
-                    attendee.status = "reached_goal"
-                
-                # Remove attendees who reach exit gates (evacuation OR early leavers)
-                if ((attendee.status == "evacuating" or attendee.status == "leaving_early") and 
-                    self.map_data[attendee.x, attendee.y] == 4):
-                    attendee.status = "exited"
-            else:
-                next_occupied.add((attendee.x, attendee.y))
+            # Track when attendee moves from entrance to open space
+            if self.map_data[attendee.x, attendee.y] == 3 and self.map_data[best_move[0], best_move[1]] == 0:
+                self.successful_entries += 1
+                # Add current progress to history
+                current_rate = (self.successful_entries / self.total_attendees) * 100
+                self.entry_progress.append(current_rate)
+            
+            attendee.x, attendee.y = best_move
+            next_occupied.add(best_move)
+            
+            # Check if attendee reached goal or gate
+            if (attendee.x, attendee.y) == attendee.goal and attendee.goal_reached_step is None:
+                attendee.goal_reached_step = self.current_step
+                attendee.status = "reached_goal"
+            
+            # Remove attendees who reach exit gates (evacuation OR early leavers)
+            if ((attendee.status == "evacuating" or attendee.status == "leaving_early") and 
+                self.map_data[attendee.x, attendee.y] == 4):
+                attendee.status = "exited"
+        else:
+            next_occupied.add((attendee.x, attendee.y))
 
     def _calculate_local_density(self, x: int, y: int, occupied: set, radius: int = 2) -> float:
         count = total = 0
@@ -186,16 +217,36 @@ class FullEventLifecycleSimulation:
         
         return vis_grid
 
-    def get_current_metrics(self) -> dict:
-        # Calculate real wait time from recent entries
-        recent_entries = [a for a in self.attendees if a.goal_reached_step and 
-                         a.goal_reached_step > self.current_step - 100]  # Last 100 steps
-        if recent_entries:
-            avg_wait_steps = np.mean([a.goal_reached_step - a.entry_time_step for a in recent_entries])
-            wait_time_mins = int(avg_wait_steps / self.config["simulation_time_scale_factor"])
-        else:
-            wait_time_mins = 5  # Default estimate
+    def calculate_wait_time(self):
+        """Calculate real wait time in minutes based on queued attendees"""
+        current_waiting = len(self.entry_times)
+        if current_waiting == 0:
+            return 0
+            
+        # Calculate average wait time for current attendees
+        current_time = self.current_step
+        wait_times = [current_time - start_time 
+                     for start_time in self.entry_times.values()]
         
+        # Convert steps to minutes using simulation time scale
+        avg_wait_steps = np.mean(wait_times) if wait_times else 0
+        return int(avg_wait_steps / self.config["simulation_time_scale_factor"])
+    
+    def get_current_metrics(self) -> dict:
+        # Calculate wait times in minutes
+        wait_times = [a.total_wait_time_steps for a in self.attendees]
+        avg_wait_time = np.mean(wait_times) if wait_times else 0
+        max_wait_time = self.max_wait_time
+        
+        # Create wait time distribution
+        if wait_times:
+            bins = [0, 5, 10, 15, float('inf')]
+            hist, _ = np.histogram(wait_times, bins=bins)
+            distribution = {f"{bins[i]}-{bins[i+1]}min": int(count) 
+                          for i, count in enumerate(hist[:-1])}
+        else:
+            distribution = {}
+
         # Method 1: Average density across occupied cells (FIXED)
         vis_grid = self.get_visualization_grid()
         attendee_cells = vis_grid[vis_grid >= 5]  # Cells with attendees (5+ in vis_grid)
@@ -212,13 +263,22 @@ class FullEventLifecycleSimulation:
                              self.map_data[a.x, a.y] == 0 and a.status in ["reached_goal", "mingling"]]
         entry_success_rate = (len(attendees_in_venue) / len(self.attendees)) * 100 if self.attendees else 0
         
+        # Calculate progressive entry rate
+        if self.entry_progress:
+            # Use the latest progress value
+            entry_success_rate = self.entry_progress[-1]
+        else:
+            entry_success_rate = 0
+        
         # Debug info
         total_occupied_cells = len(attendee_cells)
         total_attendees_visible = len([a for a in self.attendees if self.map_data[a.x, a.y] == 0])
         
         return {
             "peak_congestion_percent": congestion_percent,
-            "real_wait_time_mins": wait_time_mins,
+            "real_wait_time_mins": int(avg_wait_time / self.config["simulation_time_scale_factor"]),
+            "max_wait_time_mins": int(max_wait_time / self.config["simulation_time_scale_factor"]),
+            "wait_time_distribution": distribution,
             "entry_success_rate": entry_success_rate,
             "debug_occupied_cells": total_occupied_cells,
             "debug_visible_attendees": total_attendees_visible

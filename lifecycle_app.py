@@ -9,7 +9,7 @@ import sys
 sys.path.append(str(Path(__file__).parent / "src"))
 
 from src.simulation.simulation_runners import run_animated_simulation, run_fast_simulation
-from src.aws.lifecycle_bedrock import get_lifecycle_fallback_recommendation
+from src.aws.lifecycle_bedrock_fixed import get_lifecycle_fallback_recommendation
 from src.visualization.core import grid_to_base64_image
 
 st.set_page_config(
@@ -255,7 +255,7 @@ def run_full_lifecycle_demo(attendee_count: int, initial_gates: int, config: dic
     
     # Call REAL AWS Bedrock for AI analysis
     try:
-        from src.aws.lifecycle_bedrock import get_full_lifecycle_ai_analysis
+        from src.aws.lifecycle_bedrock_fixed import get_full_lifecycle_ai_analysis
         
         # Create proper lifecycle summary structure for AWS Bedrock
         lifecycle_summary = {
@@ -319,13 +319,48 @@ def run_full_lifecycle_demo(attendee_count: int, initial_gates: int, config: dic
         </div>
         """, unsafe_allow_html=True)
     
-    # Run after simulation
-    optimized_gates = ai_analysis['optimized_parameters']['recommended_open_gates']
+    # Extract AI optimization parameters
+    optimized_entrance_gates = ai_analysis['optimized_parameters'].get('recommended_entrance_gates', initial_gates + 2)
+    optimized_exit_gates = ai_analysis['optimized_parameters'].get('recommended_exit_gates', initial_gates + 1)
+    optimized_attendees = ai_analysis['optimized_parameters'].get('optimal_attendee_capacity', attendee_count)
+    optimized_staff = ai_analysis['optimized_parameters'].get('recommended_staff', 40)
     
+    # Show optimization summary
+    st.markdown("### 🚀 AI Optimization Applied:")
+    col_opt1, col_opt2, col_opt3, col_opt4 = st.columns(4)
+    
+    with col_opt1:
+        st.metric("Entrance Gates", f"{initial_gates} → {optimized_entrance_gates}", f"+{optimized_entrance_gates - initial_gates}")
+    with col_opt2:
+        st.metric("Exit Gates", f"{initial_gates} → {optimized_exit_gates}", f"+{optimized_exit_gates - initial_gates}")
+    with col_opt3:
+        st.metric("Staff", f"20 → {optimized_staff}", f"+{optimized_staff - 20}")
+    with col_opt4:
+        if optimized_attendees < attendee_count:
+            st.metric("Attendees", f"{attendee_count} → {optimized_attendees}", f"-{attendee_count - optimized_attendees}")
+        else:
+            st.metric("Attendees", "Optimal", "✓")
+    
+    # Run after simulation with AI optimized parameters and dynamic venue map
     if "Fast" in simulation_speed:
         # Fast mode - run entire simulation at once
-        status_text.text("⚡ Running AFTER simulation at maximum speed...")
-        after_result = run_fast_simulation(attendee_count, optimized_gates, expected_total_steps)
+        status_text.text("⚡ Running AFTER simulation with AI optimizations...")
+        
+        # Create optimized venue map with AI suggested gates
+        from src.simulation.venue_modifier import create_optimized_venue_map
+        scenario_path = st.session_state['selected_scenario_path']
+        optimized_venue_map = create_optimized_venue_map(scenario_path, optimized_entrance_gates, optimized_exit_gates)
+        
+        # Import the new function
+        from src.simulation.simulation_runners import run_fast_simulation_with_optimized_map
+        
+        # Run simulation with optimized parameters
+        after_result = run_fast_simulation_with_optimized_map(
+            optimized_attendees, 
+            optimized_entrance_gates, 
+            expected_total_steps,
+            optimized_venue_map
+        )
         
         # Show final result
         img_data = grid_to_base64_image(after_result['final_grid'], f"Step {after_result['total_steps']} (Optimized)")
@@ -349,7 +384,19 @@ def run_full_lifecycle_demo(attendee_count: int, initial_gates: int, config: dic
         # Animated mode - step by step
         status_text.text("🔄 Running AFTER simulation with AI optimizations...")
         after_step_count = 0
-        for vis_grid, metrics, phase, real_time in run_animated_simulation(attendee_count, optimized_gates):
+        # Create optimized venue map with AI suggested gates
+        from src.simulation.venue_modifier import create_optimized_venue_map
+        scenario_path = st.session_state['selected_scenario_path']
+        optimized_venue_map = create_optimized_venue_map(scenario_path, optimized_entrance_gates, optimized_exit_gates)
+        
+        # Import the new function
+        from src.simulation.simulation_runners import run_animated_simulation_with_optimized_map
+        
+        for vis_grid, metrics, phase, real_time in run_animated_simulation_with_optimized_map(
+            optimized_attendees, 
+            optimized_entrance_gates, 
+            optimized_venue_map
+        ):
             after_step_count += 1
             
             img_data = grid_to_base64_image(vis_grid, f"Step {after_step_count} (Optimized)")
@@ -386,7 +433,12 @@ def run_full_lifecycle_demo(attendee_count: int, initial_gates: int, config: dic
     st.success(f"""
     **🎉 {scenario_name.replace('_', ' ').title()} Optimization Complete!**
     
-    AI optimized gates from {initial_gates} to {optimized_gates} for {attendee_count} attendees.
+    AI optimized:
+    • Entrance gates: {initial_gates} → {optimized_entrance_gates}
+    • Exit gates: {initial_gates} → {optimized_exit_gates} 
+    • Attendees: {attendee_count} → {optimized_attendees}
+    • Staff: 20 → {optimized_staff}
+    
     Simulation mode: {simulation_speed}
     """)
 

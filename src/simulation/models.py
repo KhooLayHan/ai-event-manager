@@ -18,3 +18,4 @@ class Attendee:
     goal: Optional[Tuple[int, int]] = None
     status: str = "moving_to_goal"  # States: moving_to_goal, reached_goal, mingling, evacuating
     goal_reached_step: Optional[int] = None
+    total_wait_time_steps: int = 0  # Track total wait time

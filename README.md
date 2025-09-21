@@ -147,17 +147,27 @@ attendee.status = "evacuating"
 
 ### **Real-Time Wait Time Calculation**
 ```python
-# Uses actual attendee entry times from recent successful entries
-recent_entries = [a for a in self.attendees if a.goal_reached_step and 
-                 a.goal_reached_step > self.current_step - 100]  # Last 100 steps
-avg_wait_steps = np.mean([a.goal_reached_step - a.entry_time_step for a in recent_entries])
-wait_time_mins = int(avg_wait_steps / self.config["simulation_time_scale_factor"])
+# TWO methods of wait time tracking:
+# 1. When attendees can't move (density/space)
+if (density > 0.6 and np.random.rand() < density) or not best_move:
+    attendee.total_wait_time_steps += 1  # Increment when stuck
+
+# 2. Track successful entries
+if self.map_data[attendee.x, attendee.y] == 3 and self.map_data[best_move[0], best_move[1]] == 0:
+    self.successful_entries += 1
+    current_rate = (self.successful_entries / self.total_attendees) * 100
 ```
 
-**Why This Is Accurate:**
-- **Real Data**: Based on actual attendee experiences, not estimates
-- **Recent Window**: Uses last 100 steps for current conditions
-- **Time Scale Conversion**: 10 simulation steps = 1 real minute
+### **Updated Entry Rate System**
+```python
+# Progressive entry rate tracking
+self.successful_entries = 0  # Count when moving from entrance→open space
+self.entry_progress = []     # Track rate progress over time
+
+# Calculate growing success rate
+current_rate = (self.successful_entries / self.total_attendees) * 100
+self.entry_progress.append(current_rate)  # Store progress history
+```
 
 ### **Method 1 Congestion Calculation**
 ```python

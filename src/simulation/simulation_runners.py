@@ -22,6 +22,8 @@ def run_animated_simulation(attendees: int, open_gates: int) -> Generator[Tuple[
     Main generator for running the animated simulation for the UI.
     """
     simulation = _create_simulation_instance(open_gates)
+    simulation.total_attendees = attendees
+    simulation._create_attendees()
     
     last_event_step = max(simulation.timeline_steps.values())
     buffer_steps = simulation.config.get("simulation_buffer_steps", 200)
@@ -41,6 +43,8 @@ def run_animated_simulation(attendees: int, open_gates: int) -> Generator[Tuple[
 def run_fast_simulation(attendees: int, open_gates: int, max_steps: int) -> Dict:
     """Fast simulation - runs at maximum speed and returns final results only"""
     simulation = _create_simulation_instance(open_gates)
+    simulation.total_attendees = attendees
+    simulation._create_attendees()
     
     # Run at maximum speed - no delays, no yielding
     for step in range(max_steps):
@@ -55,3 +59,49 @@ def run_fast_simulation(attendees: int, open_gates: int, max_steps: int) -> Dict
         'lifecycle_summary': simulation.get_current_metrics(),
         'total_steps': step + 1
     }
+
+def run_fast_simulation_with_optimized_map(attendees: int, open_gates: int, max_steps: int, venue_map: np.ndarray) -> Dict:
+    """Fast simulation with AI optimized venue map and parameters"""
+    scenario_path = st.session_state.get('selected_scenario_path', 'data/concert_venue')
+    
+    # Create simulation with optimized venue map
+    simulation = FullEventLifecycleSimulation(venue_map, scenario_path, open_gates)
+    simulation.total_attendees = attendees
+    simulation._create_attendees()
+    
+    # Run at maximum speed
+    for step in range(max_steps):
+        simulation.run_lifecycle_step()
+    
+    return {
+        'final_grid': simulation.get_visualization_grid(),
+        'final_metrics': simulation.get_current_metrics(),
+        'final_phase': simulation._get_current_phase(),
+        'final_time': simulation.time_converter.to_real_time(simulation.current_step),
+        'lifecycle_summary': simulation.get_current_metrics(),
+        'total_steps': step + 1
+    }
+
+def run_animated_simulation_with_optimized_map(attendees: int, open_gates: int, venue_map: np.ndarray) -> Generator[Tuple[np.ndarray, dict, str, str], None, None]:
+    """Animated simulation with AI optimized venue map and parameters"""
+    scenario_path = st.session_state.get('selected_scenario_path', 'data/concert_venue')
+    
+    # Create simulation with optimized venue map
+    simulation = FullEventLifecycleSimulation(venue_map, scenario_path, open_gates)
+    simulation.total_attendees = attendees
+    simulation._create_attendees()
+    
+    last_event_step = max(simulation.timeline_steps.values())
+    buffer_steps = simulation.config.get("simulation_buffer_steps", 200)
+    total_steps = last_event_step + buffer_steps
+    
+    for step in range(total_steps):
+        simulation.run_lifecycle_step()
+        
+        vis_grid = simulation.get_visualization_grid()
+        metrics = simulation.get_current_metrics()
+        phase = simulation._get_current_phase()
+        real_time = simulation.time_converter.to_real_time(simulation.current_step)
+        
+        yield vis_grid, metrics, phase, real_time
+        time.sleep(0.01)

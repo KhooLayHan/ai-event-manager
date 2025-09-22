@@ -364,51 +364,41 @@ def _update_goals_for_phase(self, phase: str):
 
 ## 🤖 **AI Analysis & Optimization System**
 
-### **Dynamic Prompt Engineering**
+### **Enhanced Analysis Capabilities**
 
+1. **Comprehensive Metrics Analysis**
+   - Crowd flow improvement percentage
+   - Total time saved calculations
+   - Efficiency gain measurements
+   - Key insights generation
+   - Density pattern recognition
+   - Zone-by-zone performance tracking
+
+2. **Comparative Analysis System**
 ```python
-prompt = f"""You are an expert event safety analyst. A full event lifecycle simulation produced:
-
-EVENT OVERVIEW:
-- Total Attendees: {attendees}
-- Open Gates: {open_gates}
-
-PHASE 1 - ENTRY RUSH:
-- Peak congestion reached {entry_metrics['peak_congestion_percent']:.1f}%
-- Average entry time was {entry_metrics['avg_entry_time_mins']} minutes
-- Duration: {entry_metrics['duration_steps']} simulation steps
-
-PHASE 2 - MID-EVENT MINGLING:
-- Peak congestion during mingling: {mid_event_metrics['peak_congestion_percent']:.1f}%
-- Average wait time at facilities: {mid_event_metrics['avg_wait_time_mins']} minutes
-- Duration: {mid_event_metrics['duration_steps']} simulation steps
-
-PHASE 3 - EMERGENCY EVACUATION:
-- Peak congestion during evacuation: {evacuation_metrics['peak_congestion_percent']:.1f}%
-- Total evacuation time: {evacuation_metrics['evacuation_time_seconds']} seconds
-- Evacuation efficiency: {"Good" if evacuation_metrics['evacuation_time_seconds'] < 300 else "Needs Improvement"}
-
-Based on the performance across ALL THREE phases, provide the top two most impactful recommendations...
+# Example analysis output
+{
+    'crowd_metrics': {
+        'flow_improvement': 25.5,    # Percentage improvement
+        'density_reduction': 35.2,   # Reduced crowding
+        'congestion_score': 0.45     # Better flow
+    },
+    'efficiency_metrics': {
+        'total_time_saved': 850,     # Simulation steps
+        'throughput_gain': 42.3      # Percentage improvement
+    },
+    'safety_assessment': {
+        'risk_score': 0.65,         # Lower is better
+        'critical_areas': ['Gate 2', 'Food Court']
+    }
+}
 ```
 
-### **Intelligent Fallback System**
-
-```python
-def get_fallback_recommendation(metrics: SimulationMetrics, params: SimulationParameters) -> Dict:
-    # Calculate recommended gates based on congestion
-    current_gates = params.open_gates
-    congestion_level = metrics.peak_congestion_percent
-    
-    if congestion_level > 0.7:  # High congestion (70%+)
-        recommended_gates = min(current_gates + 2, 6)
-        recommendation = f"Critical congestion detected ({congestion_level*100:.1f}%). Open {recommended_gates} gates immediately..."
-    elif congestion_level > 0.4:  # Medium congestion (40-70%)
-        recommended_gates = current_gates + 1
-        recommendation = f"Moderate congestion detected. Open {recommended_gates} gates and implement staggered entry..."
-    else:  # Low congestion (<40%)
-        recommended_gates = current_gates
-        recommendation = "Current gate configuration is adequate. Monitor crowd density..."
-```
+3. **Real-Time Performance Tracking**
+   - Live density pattern analysis
+   - Bottleneck detection system
+   - Dynamic risk assessment
+   - Zone performance metrics
 
 ---
 

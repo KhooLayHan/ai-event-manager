@@ -36,6 +36,7 @@ st.markdown("""
 .phase-entry { background-color: #ff6b6b; color: white; }
 .phase-mid { background-color: #4ecdc4; color: white; }
 .phase-evacuation { background-color: #45b7d1; color: white; }
+.phase-evacuation-storyboard { background-color: #45b7d1; color: white; }
 .time-display {
     background-color: #2c3e50;
     color: white;
@@ -152,7 +153,7 @@ def show_lifecycle_welcome(config, scenario_name):
     
     with col3:
         st.markdown(f"""
-        <div class="phase-indicator phase-evacuation">
+        <div class="phase-indicator phase-evacuation-storyboard">
         🚨 EVACUATION ({timeline['evacuation_start_time']}+)
         </div>
         Emergency evacuation scenario.
@@ -161,6 +162,18 @@ def show_lifecycle_welcome(config, scenario_name):
     st.info("👈 **Select your venue type and configure parameters to see AI optimization!**")
 
 def run_full_lifecycle_demo(attendee_count: int, initial_gates: int, config: dict, scenario_name: str, simulation_speed: str):
+    # Hide only evacuation elements, keep Entry Rush and Mid-Event colored boxes
+    st.markdown("""
+    <script>
+    setTimeout(function() {
+        var evacuationElements = document.querySelectorAll('.phase-evacuation');
+        evacuationElements.forEach(function(el) {
+            el.style.display = 'none';
+        });
+    }, 100);
+    </script>
+    """, unsafe_allow_html=True)
+    
     st.markdown(f"## 📊 {scenario_name.replace('_', ' ').title()} Lifecycle Dashboard")
     
     col1, col2 = st.columns(2)
@@ -199,8 +212,14 @@ def run_full_lifecycle_demo(attendee_count: int, initial_gates: int, config: dic
         img_data = grid_to_base64_image(before_result['final_grid'], f"Step {before_result['total_steps']}")
         before_animation.markdown(f'<img src="{img_data}" width="100%">', unsafe_allow_html=True)
         
-        phase_class = f"phase-{before_result['final_phase'].replace('_', '-')}"
         phase_display = before_result['final_phase'].replace('_', ' ').title()
+        if before_result['final_phase'] == "entry_rush":
+            phase_class = "phase-entry"
+        elif before_result['final_phase'] == "mid_event":
+            phase_class = "phase-mid"
+        else:
+            phase_class = "phase-evacuation"
+        
         before_time_phase.markdown(f"""
         <div class="time-display">Event Time: {before_result['final_time']}</div>
         <div class="phase-indicator {phase_class}">{phase_display}</div>
@@ -224,8 +243,14 @@ def run_full_lifecycle_demo(attendee_count: int, initial_gates: int, config: dic
             img_data = grid_to_base64_image(vis_grid, f"Step {before_step_count}")
             before_animation.markdown(f'<img src="{img_data}" width="100%">', unsafe_allow_html=True)
             
-            phase_class = f"phase-{phase.replace('_', '-')}"
             phase_display = phase.replace('_', ' ').title()
+            if phase == "entry_rush":
+                phase_class = "phase-entry"
+            elif phase == "mid_event":
+                phase_class = "phase-mid"
+            else:
+                phase_class = "phase-evacuation"
+            
             before_time_phase.markdown(f"""
             <div class="time-display">Event Time: {real_time}</div>
             <div class="phase-indicator {phase_class}">{phase_display}</div>
